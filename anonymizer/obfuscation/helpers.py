@@ -3,7 +3,7 @@ import tensorflow as tf
 
 
 def kernel_initializer(kernels):
-    """ Wrapper for an initializer of convolution weights.
+    """Wrapper for an initializer of convolution weights.
 
     :return: Callable initializer object.
     """
@@ -60,20 +60,22 @@ def bilinear_filter(filter_size=(4, 4)):
     else:
         center_y = factor[1] - 0.5
 
-    og = np.ogrid[:filter_size[0], :filter_size[1]]
-    kernel = (1 - abs(og[0] - center_x) / float(factor[0])) * (1 - abs(og[1] - center_y) / float(factor[1]))
+    og = np.ogrid[: filter_size[0], : filter_size[1]]
+    kernel = (1 - abs(og[0] - center_x) / float(factor[0])) * (
+        1 - abs(og[1] - center_y) / float(factor[1])
+    )
 
     return kernel
 
 
 def get_default_session_config(memory_fraction=0.9):
-    """ Returns default session configuration
+    """Returns default session configuration
 
     :param memory_fraction: percentage of the memory which should be kept free (growing is allowed).
     :return: tensorflow session configuration object
     """
-    conf = tf.ConfigProto()
+    conf = tf.compat.v1.ConfigProto()
     conf.gpu_options.per_process_gpu_memory_fraction = memory_fraction
-    conf.gpu_options.allocator_type = 'BFC'
+    conf.gpu_options.allocator_type = "BFC"
     conf.gpu_options.allow_growth = True
     conf.allow_soft_placement = True
