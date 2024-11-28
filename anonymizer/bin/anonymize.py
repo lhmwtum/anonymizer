@@ -15,9 +15,10 @@ limitations under the License.
 """
 
 import argparse
+from pathlib import Path
 
 from anonymizer.anonymization import Anonymizer
-from anonymizer.detection import Detector, get_weights_path
+from anonymizer.detection import Detector
 from anonymizer.obfuscation import Obfuscator
 
 
@@ -123,6 +124,11 @@ def parse_args():
     return args
 
 
+def get_weights_path(base_path, kind, version="1.0.0") -> str:
+    return str(Path(base_path) / f"weights_{kind}_v{version}.pb")
+
+
+# ------------------------------------------------------------------------------
 def main(
     input_path,
     image_output_path,
@@ -137,7 +143,7 @@ def main(
     kernel_size, sigma, box_kernel_size = obfuscation_parameters.split(",")
     obfuscator = Obfuscator(
         kernel_size=int(kernel_size),
-        sigma=float(sigma),
+        sigma=int(sigma),
         box_kernel_size=int(box_kernel_size),
     )
     detectors = {
@@ -150,17 +156,24 @@ def main(
             weights_path=get_weights_path(weights_path, kind="plate"),
         ),
     }
+
     detection_thresholds = {"face": face_threshold, "plate": plate_threshold}
-    anonymizer = Anonymizer(obfuscator=obfuscator, detectors=detectors)
+
+    anonymizer = Anonymizer(
+        obfuscator=obfuscator,
+        detectors=detectors,
+        detection_thresholds=detection_thresholds,
+    )
+
     anonymizer.anonymize_images(
         input_path=input_path,
         output_path=image_output_path,
-        detection_thresholds=detection_thresholds,
         file_types=image_extensions.split(","),
         write_json=write_json,
     )
 
 
+# ------------------------------------------------------------------------------
 if __name__ == "__main__":
     args = parse_args()
     main(

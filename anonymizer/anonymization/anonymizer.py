@@ -5,6 +5,9 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 
+from anonymizer.detection import Detector
+from anonymizer.obfuscation import Obfuscator
+
 
 def load_np_image(image_path):
     image = Image.open(image_path).convert("RGB")
@@ -30,32 +33,44 @@ def save_detections(detections, detections_path):
                 "kind": box.kind,
             }
         )
+
     with open(detections_path, "w") as output_file:
         json.dump(json_output, output_file, indent=2)
 
 
+# ------------------------------------------------------------------------------
 class Anonymizer:
-    def __init__(self, detectors, obfuscator):
-        self.detectors = detectors
-        self.obfuscator = obfuscator
+    def __init__(
+        self,
+        obfuscator: Obfuscator,
+        detectors: dict[str, Detector],
+        detection_thresholds: dict[str, float],
+    ):
+        self._obfuscator = obfuscator
+        self._detectors = detectors
+        self._detection_thresholds = detection_thresholds
 
-    def anonymize_image(self, image, detection_thresholds):
-        assert set(self.detectors.keys()) == set(
-            detection_thresholds.keys()
+    # ----------------
+    def anonymize_image(self, image):
+        assert set(self._detectors.keys()) == set(
+            self._detection_thresholds.keys()
         ), "Detector names must match detection threshold names"
+
         detected_boxes = []
-        for kind, detector in self.detectors.items():
+
+        for kind, detector in self._detectors.items():
             new_boxes = detector.detect(
-                image, detection_threshold=detection_thresholds[kind]
+                image, detection_threshold=self._detection_thresholds[kind]
             )
             detected_boxes.extend(new_boxes)
-        return self.obfuscator.obfuscate(image, detected_boxes), detected_boxes
 
+        return self._obfuscator.obfuscate(image, detected_boxes), detected_boxes
+
+    # ----------------
     def anonymize_images(
         self,
         input_path,
         output_path,
-        detection_thresholds,
         file_types,
         write_json,
     ):
@@ -83,15 +98,12 @@ class Anonymizer:
             ).with_suffix(".json")
 
             # Anonymize image
-            image = load_np_image(str(input_image_path))
-            anonymized_image, detections = self.anonymize_image(
-                image=image, detection_thresholds=detection_thresholds
-            )
-            save_np_image(
-                image=anonymized_image, image_path=str(output_image_path)
-            )
+            image = load_np_image(input_image_path)
+            anonymized_image, detections = self.anonymize_image(image=image)
+            save_np_image(image=anonymized_image, image_path=output_image_path)
+
             if write_json:
                 save_detections(
                     detections=detections,
-                    detections_path=str(output_detections_path),
+                    detections_path=output_detections_path,
                 )
